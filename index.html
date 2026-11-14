@@ -51,20 +51,24 @@ const $=id=>document.getElementById(id);
 function renderSceneCopyButtons(text){
  const host=$('sceneCopies');host.innerHTML='';
  const scenes=[];
- // Split heading-based output into individual scene sections.
+ // Accept ordinary text, bold labels, inline prompts, and fenced code blocks.
  const headingRe=/^\s*(?:#{1,6}\s*)?(?:\*\*)?Scene\s+(\d+)\b[^\n]*\*{0,2}\s*$/gim;
  const headings=[...text.matchAll(headingRe)];
  headings.forEach((m,i)=>{
    const finish=i+1<headings.length?headings[i+1].index:text.length;
    const section=text.slice(m.index,finish);
-   const promptLabel=section.search(/AI\s*Video[- ]Generation\s*Prompt[^\n]*/i);
-   if(promptLabel<0)return;
-   const afterLabel=section.slice(promptLabel).replace(/^AI\s*Video[- ]Generation\s*Prompt[^\n]*\n?/i,'');
-   const fenced=afterLabel.match(/`{3,}[^\n]*\n([\s\S]*?)\n`{3,}/);
-   const prompt=fenced?fenced[1].trim():'';
-   if(prompt)scenes.push({number:m[1],content:prompt});
+   const label=/AI\s*Video[- ]Generation\s*Prompt(?:\s*\([^)]*\))?\s*[:：]\s*/i.exec(section);
+   if(!label)return;
+   let raw=section.slice(label.index+label[0].length).trim();
+   const nextLabel=/^\s*(?:[*-]\s*)?(?:\*\*)?(?:Arabic\s+Voiceover|Hindi(?:\/Hinglish)?\s+Meaning|On[- ]Screen\s+Arabic\s+Text|On[- ]Screen\s+Text|Duration)\b/im.exec(raw);
+   if(nextLabel)raw=raw.slice(0,nextLabel.index).trim();
+   const fenced=raw.match(/^\`{3,}[^\n]*\n([\s\S]*?)\n\`{3,}/);
+   if(fenced)raw=fenced[1].trim();
+   else raw=raw.replace(/^\`([^\`]*?)\`$/,'$1').replace(/^\`+|\`+$/g,'').trim();
+   raw=raw.replace(/^\*\*|\*\*$/g,'').trim();
+   if(raw)scenes.push({number:m[1],content:raw});
  });
- // Support table-style scene output too: copy only the prompt column.
+ // Fallback for older markdown-table outputs.
  if(!scenes.length){
    text.split(/\r?\n/).forEach(line=>{
      const t=line.trim();
@@ -75,8 +79,11 @@ function renderSceneCopyButtons(text){
      if(!m)return;
      const promptCell=cells.find(x=>/AI\s*Video[- ]Generation\s*Prompt|Video\s*Prompt/i.test(x));
      if(!promptCell)return;
-     const fenced=promptCell.match(/`{3,}[^\n]*\n([\s\S]*?)\n`{3,}/);
-     const prompt=fenced?fenced[1].trim():promptCell.replace(/^.*?Prompt[^:]*:\s*/i,'').trim();
+     const label=/AI\s*Video[- ]Generation\s*Prompt(?:\s*\([^)]*\))?\s*[:：]\s*/i.exec(promptCell);
+     let prompt=label?promptCell.slice(label.index+label[0].length).trim():promptCell;
+     const fenced=prompt.match(/\`{3,}[^\n]*\n([\s\S]*?)\n\`{3,}/);
+     if(fenced)prompt=fenced[1].trim();
+     else prompt=prompt.replace(/^\`+|\`+$/g,'').trim();
      if(prompt)scenes.push({number:m[1],content:prompt});
    });
  }
@@ -87,7 +94,7 @@ function renderSceneCopyButtons(text){
    btn.onclick=async()=>{try{await navigator.clipboard.writeText(scene.content);$('status').textContent='Scene '+scene.number+' ka sirf video prompt copy ho gaya.';}catch(e){$('status').textContent='Copy support nahi hua; prompt manually select karein.';}};
    host.appendChild(btn);
  });
- if(!scenes.length)host.textContent='Scene-wise prompt copy ke liye har scene mein AI Video-Generation Prompt aur code block hona chahiye.';
+ if(!scenes.length)host.textContent='Scene headings ya AI Video-Generation Prompt labels nahi mile. Output format badal kar dobara generate karein.';
 }
 const taskOptions={
  'YouTube':['Trending topic ideas (verify before use)','YouTube Shorts script banao','Long video script banao','Title, description, tags aur hashtags','Thumbnail concept aur hook','30 din ka content calendar','Channel growth aur analytics plan','YouTube monetization policy checklist','Complete Shorts production pack (scene prompts + Arabic voiceover)'],
