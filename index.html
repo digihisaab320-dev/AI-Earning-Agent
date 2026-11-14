@@ -50,17 +50,34 @@ let selected='YouTube',apiKey='';
 const $=id=>document.getElementById(id);
 function renderSceneCopyButtons(text){
  const host=$('sceneCopies');host.innerHTML='';
- // Scene headings are generated as separate blocks so each button copies one complete scene.
- const re=/^\s*(?:#{1,6}\s*)?(?:\*\*)?Scene\s+(\d+)\b[^\n]*\*{0,2}\s*$/gim;
- const matches=[...text.matchAll(re)];
- matches.forEach((m,i)=>{
-   const start=m.index;
-   const end=i+1<matches.length?matches[i+1].index:text.length;
-   const sceneText=text.slice(start,end).trim();
-   const btn=document.createElement('button');btn.type='button';btn.textContent='Scene '+m[1]+' Copy';
-   btn.onclick=async()=>{try{await navigator.clipboard.writeText(sceneText);$('status').textContent='Scene '+m[1]+' copy ho gaya.';}catch(e){$('status').textContent='Scene copy support nahi hua; scene text manually select karein.';}};
+ const scenes=[];
+ // Markdown table support: one button copies the complete row for each scene.
+ text.split(/\r?\n/).forEach(line=>{
+   const trimmed=line.trim();
+   if(!trimmed.startsWith('|')||!trimmed.endsWith('|'))return;
+   if(/^\|\s*:?-{2,}/.test(trimmed))return;
+   const cells=trimmed.slice(1,-1).split('|').map(x=>x.trim());
+   const first=(cells[0]||'').replace(/[*_]/g,'').trim();
+   const m=first.match(/^(?:Scene\s*)?(\d+)\s*[.)-]?\s*(.*)$/i);
+   if(m&&cells.length>2)scenes.push({number:m[1],title:m[2]||('Scene '+m[1]),content:trimmed});
+ });
+ // Also support scene-by-scene heading format.
+ if(!scenes.length){
+   const re=/^\s*(?:#{1,6}\s*)?(?:\*\*)?Scene\s+(\d+)\b[^\n]*\*{0,2}\s*$/gim;
+   const matches=[...text.matchAll(re)];
+   matches.forEach((m,i)=>{
+     const finish=i+1<matches.length?matches[i+1].index:text.length;
+     scenes.push({number:m[1],title:'Scene '+m[1],content:text.slice(m.index,finish).trim()});
+   });
+ }
+ scenes.forEach(scene=>{
+   const btn=document.createElement('button');btn.type='button';
+   btn.textContent='Scene '+scene.number+' Copy';
+   btn.title='Copy complete scene: '+scene.title;
+   btn.onclick=async()=>{try{await navigator.clipboard.writeText(scene.content);$('status').textContent='Scene '+scene.number+' copy ho gaya.';}catch(e){$('status').textContent='Scene copy support nahi hua; scene text manually select karein.';}};
    host.appendChild(btn);
  });
+ if(!scenes.length)host.textContent='Scene-wise copy ke liye generated output mein Scene headings ya numbered scene table honi chahiye.';
 }
 const taskOptions={
  'YouTube':['Trending topic ideas (verify before use)','YouTube Shorts script banao','Long video script banao','Title, description, tags aur hashtags','Thumbnail concept aur hook','30 din ka content calendar','Channel growth aur analytics plan','YouTube monetization policy checklist','Complete Shorts production pack (scene prompts + Arabic voiceover)'],
