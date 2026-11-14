@@ -115,7 +115,7 @@ $('generate').onclick=async()=>{
  const goal=$('goal').value.trim(),details=$('details').value.trim();
  const chosenTask=selected==='YouTube'?'Complete Shorts production pack (scene prompts + Arabic voiceover)':$('task').value;
  if(!goal){$('status').textContent='Pehle apna goal likhein.';return}
- $('generate').disabled=true;$('status').textContent='AI jawab taiyar kar raha hai...';$('result').textContent='';$('sceneCopies').innerHTML='';
+ $('generate').disabled=true;$('status').textContent='AI jawab taiyar kar raha hai...';$('result').textContent='';$('sceneCopies').innerHTML='';$('sceneCopies').innerHTML='';
  const ytRules=selected==='YouTube'?`
 YouTube ke liye extra rules: original, useful aur audience-first content suggest karein. Repetitive mass-produced, reused ya minimally changed content ko monetization shortcut na batayein. Copyrighted clips/music ko bina rights use karne ki salah na dein. Fake views, subscribers, engagement, misleading thumbnails/titles ya spam se bachein. Monetization eligibility aur policies badal sakti hain; current requirements ko YouTube Studio aur official YouTube Help par verify karne ko kahein. Shorts ke liye ek clear audience benefit, strong but truthful opening hook, concise pacing, scene/visual suggestions, voiceover aur natural CTA dein.
 YouTube workspace mein user ne jo bhi goal chuna ho, hamesha complete Shorts production pack dein; sirf ideas ya adhura script nahi. Isliye 30-45 second ka complete, ready-to-produce pack dein. Sabse pehle topic, target audience aur ek-line viewer benefit likhein. Phir 4-6 scenes dein. Har scene ko alag heading ke saath likhein: “### Scene 1 — [short title]”, “### Scene 2 — [short title]” aadi. Har scene heading ke neeche us scene ka poora content rakhein: exact duration, AI video-generation prompt (English mein, copy-ready, cinematic but realistic, vertical 9:16, original footage, consistent subject/lighting/style; prompt mein readable text/logo generate na karne ko kahein), Arabic voiceover, uska accurate Hindi/Hinglish meaning, aur screen par dikhne wala short Arabic text dein. Har scene ka prompt alag ho aur bina editing ke copy-paste kiya ja sake. Scene blocks ke beech agla scene heading hi boundary ho; table format use na karein. Scene durations ka total exact 30-45 seconds ke andar ho.
@@ -159,7 +159,8 @@ ${ytRules}`;
  const answer=data.candidates[0].content.parts.map(p=>p.text||'').join('\n');
  if(!answer)throw new Error('Google API ne text ke bajay empty response diya. Safety block ya finish reason ho sakta hai: '+(data.candidates?.[0]?.finishReason||'unknown'));
  $('result').textContent=answer;
- $('status').textContent='Jawab taiyar hai. Ise verify karke use karein.';
+ renderSceneCopyButtons(answer);
+ $('status').textContent='Jawab taiyar hai. Neeche har scene ka alag Copy button milega.';
  }catch(err){$('status').textContent='Error: '+err.message;$('result').textContent='Upar status line mein exact error diya hai. API key ko chat ya screenshot mein share na karein.'}
  finally{$('generate').disabled=false}
 };
