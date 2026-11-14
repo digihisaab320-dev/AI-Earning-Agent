@@ -22,7 +22,14 @@ button.active,button.primary{background:#1e6657;border-color:#3caa8b}.primary{wi
 <button class="active" data-work="YouTube">▶ YouTube</button><button data-work="Android Apps">▣ Android Apps</button><button data-work="Digital Products">◇ Digital Products</button><button data-work="Freelancing">✦ Freelancing</button>
 </div>
 <label for="task">Kis kaam mein madad chahiye?</label><select id="task"><option>Trending topic ideas (verify before use)</option><option>YouTube Shorts script banao</option><option>Long video script banao</option><option>Title, description, tags aur hashtags</option><option>Thumbnail concept aur hook</option><option>30 din ka content calendar</option><option>Channel growth aur analytics plan</option><option>YouTube monetization policy checklist</option></select>
-<label for="goal">Aapka goal</label><input id="goal" placeholder="Jaise: ek useful YouTube channel grow karna">
+<label for="goal">Aapka goal</label><select id="goal" required>
+<option value="">Apna goal chunein</option>
+<option>Views badhana</option>
+<option>Subscribers badhana</option>
+<option>Dono badhana</option>
+<option>Monetization ki taiyari</option>
+<option>Audience engagement badhana</option>
+</select>
 <label for="details">Extra details (optional)</label><textarea id="details" placeholder="Budget, audience, language, skills ya koi condition..."></textarea>
 </section>
 <section class="panel"><h2>2. Gemini API connect karein</h2><label for="key">Google AI Studio API key</label><input id="key" type="password" autocomplete="off" placeholder="Yahan apni API key paste karein">
