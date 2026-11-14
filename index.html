@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><title>AI Earning Agent</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#121d30;--line:#26354d;--muted:#a8b5c9;--accent:#77e0c0}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#101b2e,#080e18);color:#f4f7fb;font:16px system-ui,Arial,sans-serif}
+main{max-width:900px;margin:auto;padding:24px 16px 50px}.hero{padding:24px 4px}.tag{color:var(--accent);font-size:13px;font-weight:700;letter-spacing:1px}
+h1{font-size:clamp(28px,6vw,42px);margin:8px 0}p{color:var(--muted);line-height:1.6}.panel{background:#121d30;border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0}
+label{display:block;font-size:14px;color:#d7e1ef;margin:12px 0 7px}input,textarea,select{width:100%;background:#0b1424;color:#fff;border:1px solid #34445e;border-radius:11px;padding:13px;font:inherit}
+textarea{min-height:100px;resize:vertical}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+button{border:1px solid #34445e;background:#1a2940;color:#fff;padding:13px;border-radius:12px;font:inherit;cursor:pointer}
+button.active,button.primary{background:#1e6657;border-color:#3caa8b}.primary{width:100%;margin-top:16px;font-weight:700}
+#result{white-space:pre-wrap;line-height:1.65;overflow-wrap:anywhere;min-height:100px;color:#e7eef8}
+.small{font-size:12px}.status{color:var(--accent);min-height:20px}.hidden{display:none}
+@media(max-width:520px){main{padding:15px 12px 35px}.grid{grid-template-columns:1fr 1fr}.panel{padding:14px}}
+</style></head>
+<body><main>
+<header class="hero"><div class="tag">YOUR PRACTICAL AI WORK PARTNER</div><h1>AI Earning Agent</h1><p>Ek jagah par ideas, content aur earning-work plans taiyar karein. Faisle aur final actions hamesha aapke control mein rahenge.</p></header>
+<section class="panel"><h2>1. Apna workspace chunein</h2><div class="grid" id="workspaces">
+<button class="active" data-work="YouTube">▶ YouTube</button><button data-work="Android Apps">▣ Android Apps</button><button data-work="Digital Products">◇ Digital Products</button><button data-work="Freelancing">✦ Freelancing</button>
+</div>
+<label for="task">Kis kaam mein madad chahiye?</label><select id="task"><option>Ideas generate karo</option><option>Content / script banao</option><option>Title aur description likho</option><option>Step-by-step earning plan banao</option><option>Product ya service improve karo</option><option>Weekly action plan banao</option></select>
+<label for="goal">Aapka goal</label><input id="goal" placeholder="Jaise: ek useful YouTube channel grow karna">
+<label for="details">Extra details (optional)</label><textarea id="details" placeholder="Budget, audience, language, skills ya koi condition..."></textarea>
+</section>
+<section class="panel"><h2>2. Gemini API connect karein</h2><label for="key">Google AI Studio API key</label><input id="key" type="password" autocomplete="off" placeholder="Yahan apni API key paste karein">
+<p class="small">Key sirf is page ke current session ki memory mein rahegi; refresh karne par dobara dalni hogi. Ise GitHub par save ya kisi ke saath share na karein. Google ki free-tier limits badal sakti hain.</p>
+<button id="toggleKey">Key dikhayein / chhupayein</button>
+<button class="primary" id="generate">AI se plan taiyar karein</button><p class="status" id="status" role="status"></p>
+</section>
+<section class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h2>3. Aapka result</h2><button id="copy">Copy</button></div><div id="result">Aapka jawab yahan dikhega.</div>
+</section>
+<p class="small">Independent project: AI-Earning-Agent. DigiHisaab se alag. Yeh tool income ki guarantee nahi deta; ideas ko khud verify karein. Yeh aapki taraf se publish, send ya payment nahi karta.</p>
+</main>
+<script>
+let selected='YouTube',apiKey='';
+const $=id=>document.getElementById(id);
+document.querySelectorAll('[data-work]').forEach(btn=>btn.addEventListener('click',()=>{selected=btn.dataset.work;document.querySelectorAll('[data-work]').forEach(b=>b.classList.toggle('active',b===btn))}));
+$('key').addEventListener('input',e=>apiKey=e.target.value.trim());
+$('toggleKey').onclick=()=>{$('key').type=$('key').type==='password'?'text':'password'};
+$('copy').onclick=async()=>{const t=$('result').innerText;if(!t||t==='Aapka jawab yahan dikhega.')return;try{await navigator.clipboard.writeText(t);$('status').textContent='Result copy ho gaya.'}catch{$('status').textContent='Copy support nahi hua; text select karke copy karein.'}};
+$('generate').onclick=async()=>{
+ if(!apiKey){$('status').textContent='Pehle Google AI Studio API key enter karein.';return}
+ const goal=$('goal').value.trim(),details=$('details').value.trim();
+ if(!goal){$('status').textContent='Pehle apna goal likhein.';return}
+ $('generate').disabled=true;$('status').textContent='AI jawab taiyar kar raha hai...';$('result').textContent='';
+ const prompt=`Aap ek practical, ethical earning-work assistant hain. User ko Hindi/Hinglish mein jawab dein. Workspace: ${selected}. Task: ${$('task').value}. Goal: ${goal}. Details: ${details||'Nahi diye gaye'}.
+Specific, realistic aur beginner-friendly jawab dein. Numbered steps, estimated effort, required free/low-cost tools, validation method, risks aur next action shamil karein. Income ya success guarantee na dein. Current market research ka jhootha dawa na karein; uncertain facts ko verify karne ko kahein. Spam, scams, fake reviews, copyright infringement, platform-policy evasion ya misleading claims suggest na karein. Drafts ko drafts batayein. User ki permission ke bina publishing, messaging, buying ya account actions karne ka dawa na karein.`;
+ try{
+ const response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(apiKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:1800}})});
+ const data=await response.json();if(!response.ok)throw new Error(data.error?.message||'API request fail hua');
+ $('result').textContent=data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('\n')||'Koi text response nahi mila.';
+ $('status').textContent='Taiyar. Jawab ko verify karke hi use karein.';
+ }catch(err){$('status').textContent='Error: '+err.message;$('result').textContent='API key, internet connection aur Google AI Studio quota check karein.'}
+ finally{$('generate').disabled=false}
+};
+</script></body></html>
