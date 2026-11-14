@@ -12,7 +12,7 @@ label{display:block;font-size:14px;color:#d7e1ef;margin:12px 0 7px}input,textare
 textarea{min-height:100px;resize:vertical}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 button{border:1px solid #34445e;background:#1a2940;color:#fff;padding:13px;border-radius:12px;font:inherit;cursor:pointer}
 button.active,button.primary{background:#1e6657;border-color:#3caa8b}.primary{width:100%;margin-top:16px;font-weight:700}
-#result{white-space:pre-wrap;line-height:1.65;overflow-wrap:anywhere;min-height:100px;color:#e7eef8}
+#result{white-space:pre-wrap;line-height:1.65;overflow-wrap:anywhere;min-height:100px;color:#e7eef8}\n#sceneCopies{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}#sceneCopies button{font-size:13px;padding:10px 12px}
 .small{font-size:12px}.status{color:var(--accent);min-height:20px}.hidden{display:none}
 @media(max-width:520px){main{padding:15px 12px 35px}.grid{grid-template-columns:1fr 1fr}.panel{padding:14px}}
 </style></head>
@@ -41,13 +41,27 @@ button.active,button.primary{background:#1e6657;border-color:#3caa8b}.primary{wi
 <button type="button" id="toggleKey">Key dikhayein / chhupayein</button> <button type="button" id="clearKey">Saved key hatao</button>
 <button type="button" class="primary" id="generate">AI se plan taiyar karein</button><p class="status" id="status" role="status"></p>
 </section>
-<section class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>3. Aapka result</h2><div style="display:flex;gap:8px"><button type="button" id="copy">Copy</button><button type="button" id="saveResult">Save .txt</button></div></div><div id="result">Aapka jawab yahan dikhega.</div>
+<section class="panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2>3. Aapka result</h2><div style="display:flex;gap:8px"><button type="button" id="copy">Copy</button><button type="button" id="saveResult">Save .txt</button></div></div><div id="result">Aapka jawab yahan dikhega.</div><div id="sceneCopies" aria-label="Scene-wise copy buttons"></div>
 </section>
 <p class="small">Independent project: AI-Earning-Agent. DigiHisaab se alag. Yeh tool income ki guarantee nahi deta; ideas ko khud verify karein. Yeh aapki taraf se publish, send ya payment nahi karta.</p>
 </main>
 <script>
 let selected='YouTube',apiKey='';
 const $=id=>document.getElementById(id);
+function renderSceneCopyButtons(text){
+ const host=$('sceneCopies');host.innerHTML='';
+ // Scene headings are generated as separate blocks so each button copies one complete scene.
+ const re=/^\s*(?:#{1,6}\s*)?(?:\*\*)?Scene\s+(\d+)\b[^\n]*\*{0,2}\s*$/gim;
+ const matches=[...text.matchAll(re)];
+ matches.forEach((m,i)=>{
+   const start=m.index;
+   const end=i+1<matches.length?matches[i+1].index:text.length;
+   const sceneText=text.slice(start,end).trim();
+   const btn=document.createElement('button');btn.type='button';btn.textContent='Scene '+m[1]+' Copy';
+   btn.onclick=async()=>{try{await navigator.clipboard.writeText(sceneText);$('status').textContent='Scene '+m[1]+' copy ho gaya.';}catch(e){$('status').textContent='Scene copy support nahi hua; scene text manually select karein.';}};
+   host.appendChild(btn);
+ });
+}
 const taskOptions={
  'YouTube':['Trending topic ideas (verify before use)','YouTube Shorts script banao','Long video script banao','Title, description, tags aur hashtags','Thumbnail concept aur hook','30 din ka content calendar','Channel growth aur analytics plan','YouTube monetization policy checklist','Complete Shorts production pack (scene prompts + Arabic voiceover)'],
  'Android Apps':['App ideas generate karo','App features aur user flow banao','Development roadmap banao','App listing aur screenshots plan','Launch aur testing checklist'],
@@ -84,7 +98,7 @@ $('generate').onclick=async()=>{
  const goal=$('goal').value.trim(),details=$('details').value.trim();
  const chosenTask=selected==='YouTube'?'Complete Shorts production pack (scene prompts + Arabic voiceover)':$('task').value;
  if(!goal){$('status').textContent='Pehle apna goal likhein.';return}
- $('generate').disabled=true;$('status').textContent='AI jawab taiyar kar raha hai...';$('result').textContent='';
+ $('generate').disabled=true;$('status').textContent='AI jawab taiyar kar raha hai...';$('result').textContent='';$('sceneCopies').innerHTML='';
  const ytRules=selected==='YouTube'?`
 YouTube ke liye extra rules: original, useful aur audience-first content suggest karein. Repetitive mass-produced, reused ya minimally changed content ko monetization shortcut na batayein. Copyrighted clips/music ko bina rights use karne ki salah na dein. Fake views, subscribers, engagement, misleading thumbnails/titles ya spam se bachein. Monetization eligibility aur policies badal sakti hain; current requirements ko YouTube Studio aur official YouTube Help par verify karne ko kahein. Shorts ke liye ek clear audience benefit, strong but truthful opening hook, concise pacing, scene/visual suggestions, voiceover aur natural CTA dein.
 YouTube workspace mein user ne jo bhi goal chuna ho, hamesha complete Shorts production pack dein; sirf ideas ya adhura script nahi. Isliye 30-45 second ka complete, ready-to-produce pack dein. Sabse pehle topic, target audience aur ek-line viewer benefit likhein. Phir 4-6 numbered scenes ki table dein; har scene mein exact duration, AI video-generation prompt (English mein, copy-ready, cinematic but realistic, vertical 9:16, original footage, consistent subject/lighting/style; prompt mein readable text/logo generate na karne ko kahein), Arabic voiceover, uska accurate Hindi/Hinglish meaning, aur screen par dikhne wala short Arabic text dein. Har scene ka prompt alag ho aur bina editing ke copy-paste kiya ja sake. Scene durations ka total exact 30-45 seconds ke andar ho.
