@@ -51,33 +51,43 @@ const $=id=>document.getElementById(id);
 function renderSceneCopyButtons(text){
  const host=$('sceneCopies');host.innerHTML='';
  const scenes=[];
- // Markdown table support: one button copies the complete row for each scene.
- text.split(/\r?\n/).forEach(line=>{
-   const trimmed=line.trim();
-   if(!trimmed.startsWith('|')||!trimmed.endsWith('|'))return;
-   if(/^\|\s*:?-{2,}/.test(trimmed))return;
-   const cells=trimmed.slice(1,-1).split('|').map(x=>x.trim());
-   const first=(cells[0]||'').replace(/[*_]/g,'').trim();
-   const m=first.match(/^(?:Scene\s*)?(\d+)\s*[.)-]?\s*(.*)$/i);
-   if(m&&cells.length>2)scenes.push({number:m[1],title:m[2]||('Scene '+m[1]),content:trimmed});
+ // Split heading-based output into individual scene sections.
+ const headingRe=/^\\s*(?:#{1,6}\\s*)?(?:\\*\\*)?Scene\\s+(\\d+)\\b[^\\n]*\\*{0,2}\\s*$/gim;
+ const headings=[...text.matchAll(headingRe)];
+ headings.forEach((m,i)=>{
+   const finish=i+1<headings.length?headings[i+1].index:text.length;
+   const section=text.slice(m.index,finish);
+   const promptLabel=section.search(/AI\\s*Video[- ]Generation\\s*Prompt[^\\n]*/i);
+   if(promptLabel<0)return;
+   const afterLabel=section.slice(promptLabel).replace(/^AI\\s*Video[- ]Generation\\s*Prompt[^\\n]*\\n?/i,'');
+   const fenced=afterLabel.match(/`{3,}[^\\n]*\\n([\\s\\S]*?)\\n`{3,}/);
+   const prompt=fenced?fenced[1].trim():'';
+   if(prompt)scenes.push({number:m[1],content:prompt});
  });
- // Also support scene-by-scene heading format.
+ // Support table-style scene output too: copy only the prompt column.
  if(!scenes.length){
-   const re=/^\s*(?:#{1,6}\s*)?(?:\*\*)?Scene\s+(\d+)\b[^\n]*\*{0,2}\s*$/gim;
-   const matches=[...text.matchAll(re)];
-   matches.forEach((m,i)=>{
-     const finish=i+1<matches.length?matches[i+1].index:text.length;
-     scenes.push({number:m[1],title:'Scene '+m[1],content:text.slice(m.index,finish).trim()});
+   text.split(/\\r?\\n/).forEach(line=>{
+     const t=line.trim();
+     if(!t.startsWith('|')||!t.endsWith('|')||/^\\|\\s*:?-{2,}/.test(t))return;
+     const cells=t.slice(1,-1).split('|').map(x=>x.trim());
+     const first=(cells[0]||'').replace(/[*_]/g,'').trim();
+     const m=first.match(/^(?:Scene\\s*)?(\\d+)\\s*[.)-]?\\s*(.*)$/i);
+     if(!m)return;
+     const promptCell=cells.find(x=>/AI\\s*Video[- ]Generation\\s*Prompt|Video\\s*Prompt/i.test(x));
+     if(!promptCell)return;
+     const fenced=promptCell.match(/`{3,}[^\\n]*\\n([\\s\\S]*?)\\n`{3,}/);
+     const prompt=fenced?fenced[1].trim():promptCell.replace(/^.*?Prompt[^:]*:\\s*/i,'').trim();
+     if(prompt)scenes.push({number:m[1],content:prompt});
    });
  }
  scenes.forEach(scene=>{
    const btn=document.createElement('button');btn.type='button';
-   btn.textContent='Scene '+scene.number+' Copy';
-   btn.title='Copy complete scene: '+scene.title;
-   btn.onclick=async()=>{try{await navigator.clipboard.writeText(scene.content);$('status').textContent='Scene '+scene.number+' copy ho gaya.';}catch(e){$('status').textContent='Scene copy support nahi hua; scene text manually select karein.';}};
+   btn.textContent='Scene '+scene.number+' Prompt Copy';
+   btn.title='Copy only the AI video prompt for Scene '+scene.number;
+   btn.onclick=async()=>{try{await navigator.clipboard.writeText(scene.content);$('status').textContent='Scene '+scene.number+' ka sirf video prompt copy ho gaya.';}catch(e){$('status').textContent='Copy support nahi hua; prompt manually select karein.';}};
    host.appendChild(btn);
  });
- if(!scenes.length)host.textContent='Scene-wise copy ke liye generated output mein Scene headings ya numbered scene table honi chahiye.';
+ if(!scenes.length)host.textContent='Scene-wise prompt copy ke liye har scene mein AI Video-Generation Prompt aur code block hona chahiye.';
 }
 const taskOptions={
  'YouTube':['Trending topic ideas (verify before use)','YouTube Shorts script banao','Long video script banao','Title, description, tags aur hashtags','Thumbnail concept aur hook','30 din ka content calendar','Channel growth aur analytics plan','YouTube monetization policy checklist','Complete Shorts production pack (scene prompts + Arabic voiceover)'],
