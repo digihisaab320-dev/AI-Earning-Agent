@@ -51,50 +51,58 @@ const $=id=>document.getElementById(id);
 function renderSceneCopyButtons(text){
  const host=$('sceneCopies');host.innerHTML='';
  const scenes=[];
- // Accept ordinary text, bold labels, inline prompts, and fenced code blocks.
+ const cleanBlock=value=>{
+   let v=value.trim();
+   const fenced=v.match(/^(?:\x60){3,}[^\n]*\n([\s\S]*?)\n(?:\x60){3,}/);
+   if(fenced)v=fenced[1].trim();
+   else v=v.replace(/^(?:\x60)([^\x60]*?)(?:\x60)$/,'$1').replace(/^(?:\x60)+|(?:\x60)+$/g,'').trim();
+   return v.replace(/^\*\*|\*\*$/g,'').trim();
+ };
  const headingRe=/^\s*(?:#{1,6}\s*)?(?:\*\*)?Scene\s+(\d+)\b[^\n]*\*{0,2}\s*$/gim;
  const headings=[...text.matchAll(headingRe)];
  headings.forEach((m,i)=>{
    const finish=i+1<headings.length?headings[i+1].index:text.length;
    const section=text.slice(m.index,finish);
-   const label=/AI\s*Video[- ]Generation\s*Prompt(?:\s*\([^)]*\))?\s*[:：]\s*/i.exec(section);
-   if(!label)return;
-   let raw=section.slice(label.index+label[0].length).trim();
-   const nextLabel=/^\s*(?:[*-]\s*)?(?:\*\*)?(?:Arabic\s+Voiceover|Hindi(?:\/Hinglish)?\s+Meaning|On[- ]Screen\s+Arabic\s+Text|On[- ]Screen\s+Text|Duration)\b/im.exec(raw);
-   if(nextLabel)raw=raw.slice(0,nextLabel.index).trim();
-   const fenced=raw.match(/^\`{3,}[^\n]*\n([\s\S]*?)\n\`{3,}/);
-   if(fenced)raw=fenced[1].trim();
-   else raw=raw.replace(/^\`([^\`]*?)\`$/,'$1').replace(/^\`+|\`+$/g,'').trim();
-   raw=raw.replace(/^\*\*|\*\*$/g,'').trim();
-   if(raw)scenes.push({number:m[1],content:raw});
+   const promptLabel=/AI\s*Video[- ]Generation\s*Prompt(?:\s*\([^)]*\))?\s*[:：]\s*/i.exec(section);
+   const voiceLabel=/Arabic\s+Voiceover(?:\s*\([^)]*\))?\s*[:：]\s*/i.exec(section);
+   if(!promptLabel||!voiceLabel)return;
+   let promptRaw=section.slice(promptLabel.index+promptLabel[0].length);
+   const promptEnd=/^\s*(?:[*-]\s*)?(?:\*\*)?(?:Arabic\s+Voiceover|Hindi(?:\/Hinglish)?\s+Meaning|On[- ]Screen\s+Arabic\s+Text|On[- ]Screen\s+Text|Duration)\b/im.exec(promptRaw);
+   if(promptEnd)promptRaw=promptRaw.slice(0,promptEnd.index);
+   const voiceRaw=section.slice(voiceLabel.index+voiceLabel[0].length);
+   const voiceEnd=/^\s*(?:[*-]\s*)?(?:\*\*)?(?:Hindi(?:\/Hinglish)?\s+Meaning|On[- ]Screen\s+Arabic\s+Text|On[- ]Screen\s+Text|Duration|AI\s*Video[- ]Generation\s*Prompt)\b/im.exec(voiceRaw);
+   const prompt=cleanBlock(promptRaw);
+   const voiceover=cleanBlock(voiceEnd?voiceRaw.slice(0,voiceEnd.index):voiceRaw);
+   if(prompt&&voiceover)scenes.push({number:m[1],prompt,voiceover});
  });
- // Fallback for older markdown-table outputs.
  if(!scenes.length){
    text.split(/\r?\n/).forEach(line=>{
      const t=line.trim();
      if(!t.startsWith('|')||!t.endsWith('|')||/^\|\s*:?-{2,}/.test(t))return;
      const cells=t.slice(1,-1).split('|').map(x=>x.trim());
      const first=(cells[0]||'').replace(/[*_]/g,'').trim();
-     const m=first.match(/^(?:Scene\s*)?(\d+)\s*[.)-]?\s*(.*)$/i);
+     const m=first.match(/^(?:Scene\s*)?(\d+)\s*[.)-]?/i);
      if(!m)return;
      const promptCell=cells.find(x=>/AI\s*Video[- ]Generation\s*Prompt|Video\s*Prompt/i.test(x));
-     if(!promptCell)return;
-     const label=/AI\s*Video[- ]Generation\s*Prompt(?:\s*\([^)]*\))?\s*[:：]\s*/i.exec(promptCell);
-     let prompt=label?promptCell.slice(label.index+label[0].length).trim():promptCell;
-     const fenced=prompt.match(/\`{3,}[^\n]*\n([\s\S]*?)\n\`{3,}/);
-     if(fenced)prompt=fenced[1].trim();
-     else prompt=prompt.replace(/^\`+|\`+$/g,'').trim();
-     if(prompt)scenes.push({number:m[1],content:prompt});
+     const voiceCell=cells.find(x=>/Arabic\s+Voiceover/i.test(x));
+     if(!promptCell||!voiceCell)return;
+     const prompt=cleanBlock(promptCell.replace(/^.*?Prompt[^:：]*[:：]\s*/i,''));
+     const voiceover=cleanBlock(voiceCell.replace(/^.*?Voiceover[^:：]*[:：]\s*/i,''));
+     if(prompt&&voiceover)scenes.push({number:m[1],prompt,voiceover});
    });
  }
  scenes.forEach(scene=>{
    const btn=document.createElement('button');btn.type='button';
-   btn.textContent='Scene '+scene.number+' Prompt Copy';
-   btn.title='Copy only the AI video prompt for Scene '+scene.number;
-   btn.onclick=async()=>{try{await navigator.clipboard.writeText(scene.content);$('status').textContent='Scene '+scene.number+' ka sirf video prompt copy ho gaya.';}catch(e){$('status').textContent='Copy support nahi hua; prompt manually select karein.';}};
+   btn.textContent='Scene '+scene.number+' Prompt + Voiceover Copy';
+   btn.title='Copy the video prompt and Arabic voiceover together for Scene '+scene.number;
+   btn.onclick=async()=>{
+     const combined='AI Video Prompt:\n'+scene.prompt+'\n\nArabic Voiceover:\n'+scene.voiceover;
+     try{await navigator.clipboard.writeText(combined);$('status').textContent='Scene '+scene.number+' ka prompt aur Arabic voiceover ek saath copy ho gaya.';}
+     catch(e){$('status').textContent='Copy support nahi hua; prompt aur voiceover manually select karein.';}
+   };
    host.appendChild(btn);
  });
- if(!scenes.length)host.textContent='Scene headings ya AI Video-Generation Prompt labels nahi mile. Output format badal kar dobara generate karein.';
+ if(!scenes.length)host.textContent='Scene-wise Prompt + Voiceover buttons ke liye har scene mein AI Video-Generation Prompt aur Arabic Voiceover labels hone chahiye.';
 }
 const taskOptions={
  'YouTube':['Trending topic ideas (verify before use)','YouTube Shorts script banao','Long video script banao','Title, description, tags aur hashtags','Thumbnail concept aur hook','30 din ka content calendar','Channel growth aur analytics plan','YouTube monetization policy checklist','Complete Shorts production pack (scene prompts + Arabic voiceover)'],
@@ -135,7 +143,7 @@ $('generate').onclick=async()=>{
  $('generate').disabled=true;$('status').textContent='AI jawab taiyar kar raha hai...';$('result').textContent='';$('sceneCopies').innerHTML='';$('sceneCopies').innerHTML='';
  const ytRules=selected==='YouTube'?`
 YouTube ke liye extra rules: original, useful aur audience-first content suggest karein. Repetitive mass-produced, reused ya minimally changed content ko monetization shortcut na batayein. Copyrighted clips/music ko bina rights use karne ki salah na dein. Fake views, subscribers, engagement, misleading thumbnails/titles ya spam se bachein. Monetization eligibility aur policies badal sakti hain; current requirements ko YouTube Studio aur official YouTube Help par verify karne ko kahein. Shorts ke liye ek clear audience benefit, strong but truthful opening hook, concise pacing, scene/visual suggestions, voiceover aur natural CTA dein.
-YouTube workspace mein user ne jo bhi goal chuna ho, hamesha complete Shorts production pack dein; sirf ideas ya adhura script nahi. Isliye 30-45 second ka complete, ready-to-produce pack dein. Sabse pehle topic, target audience aur ek-line viewer benefit likhein. Phir 4-6 scenes dein. Har scene ko alag heading ke saath likhein: “### Scene 1 — [short title]”, “### Scene 2 — [short title]” aadi. Har scene heading ke neeche us scene ka poora content rakhein: exact duration, AI video-generation prompt (English mein, copy-ready, cinematic but realistic, vertical 9:16, original footage, consistent subject/lighting/style; prompt mein readable text/logo generate na karne ko kahein), Arabic voiceover, uska accurate Hindi/Hinglish meaning, aur screen par dikhne wala short Arabic text dein. Har scene ka prompt alag ho aur bina editing ke copy-paste kiya ja sake. Scene blocks ke beech agla scene heading hi boundary ho; table format use na karein. Scene durations ka total exact 30-45 seconds ke andar ho.
+YouTube workspace mein user ne jo bhi goal chuna ho, hamesha complete Shorts production pack dein; sirf ideas ya adhura script nahi. Isliye 30-45 second ka complete, ready-to-produce pack dein. Sabse pehle topic, target audience aur ek-line viewer benefit likhein. Phir 4-6 scenes dein. Har scene ko alag heading ke saath likhein: “### Scene 1 — [short title]”, “### Scene 2 — [short title]” aadi. Har scene heading ke neeche us scene ka poora content rakhein: exact duration, AI video-generation prompt (English mein, simple aur short 1-2 sentences, copy-ready; sirf scene mein kya dikhna hai, character continuity, vertical 9:16 aur no text/logos batayein; unnecessary cinematic jargon, camera details aur lambi repeated descriptions se bachein), Arabic voiceover, uska accurate Hindi/Hinglish meaning, aur screen par dikhne wala short Arabic text dein. Har scene ka prompt alag ho aur simple 1-2 sentences ka ho. Har scene ka Arabic voiceover uske prompt ke turant baad alag label mein ho. Ek hi scene button se dono cheezein saath copy honi chahiye: pehle English prompt, phir Arabic voiceover. Prompt mein lambi extra descriptions ya unnecessary technical jargon na ho. Scene blocks ke beech agla scene heading hi boundary ho; table format use na karein. Scene durations ka total exact 30-45 seconds ke andar ho.
 Visual continuity sabse zaroori hai: prompts likhne se pehle ek chhota 'Character & Visual Continuity Guide' dein. Ek fictional adult Arab woman ko main character banayein; uska face, age appearance, skin tone, hairstyle, modest outfit, accessories aur overall look sab scenes mein same rakhein. Ek hi setting/style, lighting direction, color palette aur camera language maintain karein. Har scene ke English prompt mein usi character ki fixed description dobara include karein aur clearly likhein: same exact woman as previous scene, no face/identity drift, no outfit/hair/accessory changes. Agar kisi scene mein character ki zaroorat nahi, toh continuity ko todne wala naya random character na laayein. CTA scene mein bhi wahi character ya wahi established visual environment use karein; generated video ke andar text banwane ke bajay Arabic text editing ke waqt overlay karne ko kahein.
 Arabic language quality: poore Short mein ek hi register choose karein—natural Modern Standard Arabic (MSA) ya natural Gulf-friendly Arabic—and mix na karein. Female audience ko address karte waqt feminine grammar, hamza, prepositions aur natural idiom sahi rakhein. Misal: “هل تشعرين بجفاف في بشرتكِ؟” sahi hai; “هل تشعرين جفاف في بشرتك؟” nahi. Arabic voiceover short, conversational aur native-sounding ho; literal machine translation aur awkward phrasing se bachein. Hindi/Hinglish meaning Arabic line ka exact sense de. Arabic spelling aur on-screen text ko publish se pehle native speaker se proofread karne ki salah dein.
 Skincare/beauty safety: educational general information only; diagnosis/treatment ya guaranteed results na dein. Lemon, baking soda, toothpaste, undiluted essential oils ya harsh DIY mixtures ko face par lagane ki salah na dein. Irritation/allergy risk ko balanced tareeke se batayein; patch test ko universal guarantee na kahein. Moisturizer ko hydration aur skin barrier support ke liye describe karein; elasticity ya “natural glow” ka guaranteed result claim na karein. Toner optional hai, zaroori step nahi. 'Instant glow', 'permanent result', '100% safe', 'cures acne' jaise unsupported promises na karein. Sunscreen ke liye broad-spectrum SPF 30+ ko general sun-protection guidance ke roop mein use karein. Sunscreen/moisturizer claims ko evidence-aligned rakhein, skin type ke hisaab se caveat dein, aur persistent/severe symptoms mein dermatologist se salah lene ko kahein. Product endorsements ya ingredient claims invent na karein. Medical claims ko publish karne se pehle reliable dermatology/health sources se verify karne ka note dein.
